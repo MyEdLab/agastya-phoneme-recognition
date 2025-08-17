@@ -1,0 +1,11 @@
+torch
+transformers
+librosa
+soundfile
+datasets
+protobuf
+phonemizer
+flask
+flask-cors
+flask-socketio
+python-socketio

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phoneme Recognition - Unified App</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 30px 0;
+        }
+        
+        .mode-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .mode-btn.active {
+            background: linear-gradient(45deg, #2ed573, #1dd1a1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 213, 115, 0.4);
+        }
+        
+        .mode-content {
+            display: none;
+        }
+        
+        .mode-content.active {
+            display: block;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .record-btn {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+            color: white;
+        }
+        
+        .record-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+        }
+        
+        .record-btn.recording {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(45deg, #747d8c, #57606f);
+            color: white;
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(45deg, #5352ed, #3742fa);
+            color: white;
+        }
+        
+        .realtime-btn {
+            background: linear-gradient(45deg, #2ed573, #1dd1a1);
+            color: white;
+        }
+        
+        .realtime-btn.active {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .file-upload {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ffa502, #ff6348);
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 165, 2, 0.4);
+        }
+        
+        .results {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 25px;
+            display: none;
+        }
+        
+        .phoneme-sequence {
+            font-size: 24px;
+            text-align: center;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            word-spacing: 8px;
+        }
+        
+        .phoneme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .phoneme-item {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .phoneme-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .phoneme-symbol {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Real-time specific styles */
+        .realtime-display {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            min-height: 150px;
+        }
+        
+        .live-phonemes {
+            font-size: 28px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            word-spacing: 8px;
+        }
+        
+        .phoneme-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+            min-height: 60px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .phoneme-bubble {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            animation: fadeIn 0.5s ease-in;
+            position: relative;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .phoneme-bubble.high-confidence {
+            background: rgba(46, 213, 115, 0.3);
+            border-color: rgba(46, 213, 115, 0.6);
+        }
+        
+        .phoneme-bubble.medium-confidence {
+            background: rgba(255, 165, 2, 0.3);
+            border-color: rgba(255, 165, 2, 0.6);
+        }
+        
+        .phoneme-bubble.low-confidence {
+            background: rgba(255, 71, 87, 0.3);
+            border-color: rgba(255, 71, 87, 0.6);
+        }
+        
+        .confidence-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: white;
+            color: #333;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .connection-status.connected {
+            background: rgba(46, 213, 115, 0.9);
+            color: white;
+        }
+        
+        .connection-status.disconnected {
+            background: rgba(255, 71, 87, 0.9);
+            color: white;
+        }
+        
+        .error {
+            background: rgba(255, 71, 87, 0.2);
+            border: 2px solid #ff4757;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .success {
+            background: rgba(46, 213, 115, 0.2);
+            border: 2px solid #2ed573;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+    
+    <div class="container">
+        <h1>🎤 Phoneme Recognition</h1>
+        
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('recording')">
+                📊 Post-Recording Analysis
+            </button>
+            <button class="mode-btn" onclick="switchMode('realtime')">
+                ⚡ Real-time Streaming
+            </button>
+        </div>
+        
+        <div class="status" id="status">Ready to record</div>
+        
+        <!-- Post-Recording Mode -->
+        <div class="mode-content active" id="recordingMode">
+            <div class="controls">
+                <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+                    🎤 Start Recording
+                </button>
+                <button class="stop-btn" id="stopBtn" onclick="stopRecording()" disabled>
+                    ⏹️ Stop
+                </button>
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeRecording()" disabled>
+                    🔍 Analyze
+                </button>
+            </div>
+            
+            <div class="file-upload">
+                <label for="audioFile">📁 Upload Audio File</label>
+                <input type="file" id="audioFile" accept="audio/*" onchange="uploadFile()">
+            </div>
+            
+            <div class="results" id="results">
+                <h2>📊 Phoneme Analysis Results</h2>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="totalPhonemes">0</span>
+                        <span class="stat-label">Total Phonemes</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="avgConfidence">0%</span>
+                        <span class="stat-label">Avg Confidence</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="duration">0.0s</span>
+                        <span class="stat-label">Duration</span>
+                    </div>
+                </div>
+                
+                <h3>🔤 IPA Transcription:</h3>
+                <div class="phoneme-sequence" id="ipaTranscription"></div>
+                
+                <h3>📝 Phoneme Sequence:</h3>
+                <div class="phoneme-sequence" id="phonemeSequence"></div>
+                
+                <h3>🎯 Detailed Phonemes:</h3>
+                <div class="phoneme-grid" id="phonemeGrid"></div>
+            </div>
+        </div>
+        
+        <!-- Real-time Mode -->
+        <div class="mode-content" id="realtimeMode">
+            <div class="controls">
+                <button class="realtime-btn" id="realtimeBtn" onclick="toggleRealtime()">
+                    ⚡ Start Real-time
+                </button>
+                <button class="stop-btn" id="realtimeStopBtn" onclick="stopRealtime()" disabled>
+                    ⏹️ Stop
+                </button>
+            </div>
+            
+            <div class="realtime-display">
+                <h3>🔴 Live Phoneme Stream:</h3>
+                <div class="live-phonemes" id="livePhonemes">Ready to start...</div>
+                
+                <h4>📊 Phoneme Bubbles:</h4>
+                <div class="phoneme-stream" id="phonemeStream">
+                    <div style="opacity: 0.5; font-style: italic;">Phonemes will appear here...</div>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="realtimeTotalPhonemes">0</span>
+                    <span class="stat-label">Total Phonemes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="realtimeAvgConfidence">0%</span>
+                    <span class="stat-label">Avg Confidence</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="phonemesPerSecond">0</span>
+                    <span class="stat-label">Phonemes/sec</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="sessionTime">0s</span>
+                    <span class="stat-label">Session Time</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection
+        const socket = io();
+        
+        // Audio processing variables
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let isRealtimeMode = false;
+        let mediaStream = null;
+        let audioContext = null;
+        let processor = null;
+        let sessionStartTime = null;
+        let totalPhonemes = 0;
+        let confidenceSum = 0;
+        let phonemeCount = 0;
+        
+        // Mode switching
+        function switchMode(mode) {
+            // Update mode buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Show/hide content
+            document.querySelectorAll('.mode-content').forEach(content => content.classList.remove('active'));
+            
+            if (mode === 'recording') {
+                document.getElementById('recordingMode').classList.add('active');
+                stopRealtime(); // Stop real-time if active
+            } else if (mode === 'realtime') {
+                document.getElementById('realtimeMode').classList.add('active');
+                stopRecording(); // Stop recording if active
+            }
+        }
+        
+        // WebSocket handlers
+        socket.on('connect', function() {
+            document.getElementById('connectionStatus').textContent = 'Connected';
+            document.getElementById('connectionStatus').className = 'connection-status connected';
+            checkModelStatus();
+        });
+        
+        socket.on('disconnect', function() {
+            document.getElementById('connectionStatus').textContent = 'Disconnected';
+            document.getElementById('connectionStatus').className = 'connection-status disconnected';
+        });
+        
+        socket.on('realtime_status', function(data) {
+            document.getElementById('status').textContent = data.message;
+            if (data.active) {
+                document.getElementById('status').className = 'status success';
+            }
+        });
+        
+        socket.on('phoneme_result', function(data) {
+            displayRealtimePhonemes(data);
+            updateRealtimeStats(data);
+        });
+        
+        socket.on('error', function(data) {
+            document.getElementById('status').innerHTML = `❌ ${data.message}`;
+            document.getElementById('status').className = 'status error';
+        });
+        
+        function checkModelStatus() {
+            fetch('/model_status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.model_loaded && data.vocab_loaded) {
+                        document.getElementById('status').innerHTML = `✅ Model loaded (${data.vocab_size} phonemes)`;
+                        document.getElementById('status').className = 'status success';
+                    } else {
+                        document.getElementById('status').innerHTML = '❌ Model not loaded';
+                        document.getElementById('status').className = 'status error';
+                    }
+                });
+        }
+        
+        // Post-recording functions
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+        
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('recordBtn').textContent = '🔴 Recording...';
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('status').textContent = 'Recording audio...';
+                
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                document.getElementById('status').innerHTML = '❌ Error accessing microphone';
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('status').textContent = 'Recording stopped. Click Analyze to process.';
+            }
+        }
+        
+        async function analyzeRecording() {
+            if (audioChunks.length === 0) {
+                alert('No recording to analyze!');
+                return;
+            }
+            
+            document.getElementById('status').textContent = 'Analyzing phonemes...';
+            
+            try {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.wav');
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                displayResults(result);
+                
+            } catch (error) {
+                console.error('Error analyzing audio:', error);
+                document.getElementById('status').innerHTML = `❌ Error: ${error.message}`;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            document.getElementById('status').textContent = 'Analyzing uploaded file...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('audio', file);
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                displayResults(result);
+                
+            } catch (error) {
+                console.error('Error analyzing file:', error);
+                document.getElementById('status').innerHTML = `❌ Error: ${error.message}`;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        function displayResults(result) {
+            document.getElementById('status').innerHTML = '✅ Analysis complete!';
+            document.getElementById('status').className = 'status success';
+            
+            // Update stats
+            document.getElementById('totalPhonemes').textContent = result.total_phonemes;
+            document.getElementById('avgConfidence').textContent = Math.round(result.avg_confidence * 100) + '%';
+            document.getElementById('duration').textContent = result.audio_duration.toFixed(2) + 's';
+            
+            // Update transcriptions
+            document.getElementById('ipaTranscription').textContent = result.ipa_transcription || '';
+            document.getElementById('phonemeSequence').textContent = result.sequence_normalized || result.sequence_raw || result.sequence || '';
+            
+            // Update phoneme grid
+            const grid = document.getElementById('phonemeGrid');
+            grid.innerHTML = '';
+            
+            result.phonemes.forEach(phoneme => {
+                const item = document.createElement('div');
+                item.className = 'phoneme-item';
+                item.innerHTML = `
+                    <div class="phoneme-symbol">/${phoneme.phoneme}/</div>
+                    <div style="font-size: 14px; opacity: 0.8;">${Math.round(phoneme.confidence * 100)}% confidence</div>
+                    <div style="font-size: 12px; opacity: 0.6;">${phoneme.start ? phoneme.start.toFixed(2) : '0.00'}s</div>
+                `;
+                grid.appendChild(item);
+            });
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        // Real-time functions
+        async function toggleRealtime() {
+            if (!isRealtimeMode) {
+                await startRealtime();
+            } else {
+                stopRealtime();
+            }
+        }
+        
+        async function startRealtime() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                
+                audioContext = new AudioContext({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                
+                await audioContext.audioWorklet.addModule(createProcessorBlob());
+                processor = new AudioWorkletNode(audioContext, 'audio-processor');
+                
+                processor.port.onmessage = (event) => {
+                    if (event.data.audio && isRealtimeMode) {
+                        socket.emit('audio_chunk', { audio: event.data.audio });
+                    }
+                };
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                isRealtimeMode = true;
+                sessionStartTime = Date.now();
+                document.getElementById('realtimeBtn').textContent = '🔴 Recording...';
+                document.getElementById('realtimeBtn').classList.add('active');
+                document.getElementById('realtimeStopBtn').disabled = false;
+                document.getElementById('livePhonemes').textContent = 'Listening...';
+                
+                document.getElementById('phonemeStream').innerHTML = '';
+                resetRealtimeStats();
+                startSessionTimer();
+                
+                socket.emit('start_realtime');
+                
+            } catch (error) {
+                console.error('Error starting real-time:', error);
+                document.getElementById('status').innerHTML = '❌ Error accessing microphone';
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        function stopRealtime() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            processor = null;
+            isRealtimeMode = false;
+            
+            document.getElementById('realtimeBtn').textContent = '⚡ Start Real-time';
+            document.getElementById('realtimeBtn').classList.remove('active');
+            document.getElementById('realtimeStopBtn').disabled = true;
+            document.getElementById('livePhonemes').textContent = 'Stopped';
+            
+            socket.emit('stop_realtime');
+        }
+        
+        function displayRealtimePhonemes(data) {
+            document.getElementById('livePhonemes').textContent = data.ipa_transcription;
+            
+            const stream = document.getElementById('phonemeStream');
+            
+            data.phonemes.forEach(phoneme => {
+                const bubble = document.createElement('div');
+                bubble.className = 'phoneme-bubble';
+                
+                if (phoneme.confidence > 0.8) {
+                    bubble.classList.add('high-confidence');
+                } else if (phoneme.confidence > 0.6) {
+                    bubble.classList.add('medium-confidence');
+                } else {
+                    bubble.classList.add('low-confidence');
+                }
+                
+                bubble.innerHTML = `
+                    /${phoneme.phoneme}/
+                    <div class="confidence-indicator">${Math.round(phoneme.confidence * 100)}</div>
+                `;
+                
+                stream.appendChild(bubble);
+                
+                while (stream.children.length > 20) {
+                    stream.removeChild(stream.firstChild);
+                }
+            });
+            
+            stream.scrollLeft = stream.scrollWidth;
+        }
+        
+        function updateRealtimeStats(data) {
+            totalPhonemes += data.phonemes.length;
+            confidenceSum += data.avg_confidence * data.phonemes.length;
+            phonemeCount += data.phonemes.length;
+            
+            document.getElementById('realtimeTotalPhonemes').textContent = totalPhonemes;
+            
+            if (phonemeCount > 0) {
+                const avgConf = (confidenceSum / phonemeCount * 100).toFixed(0);
+                document.getElementById('realtimeAvgConfidence').textContent = avgConf + '%';
+            }
+            
+            if (sessionStartTime) {
+                const elapsed = (Date.now() - sessionStartTime) / 1000;
+                const phonemesPerSec = (totalPhonemes / elapsed).toFixed(1);
+                document.getElementById('phonemesPerSecond').textContent = phonemesPerSec;
+            }
+        }
+        
+        function resetRealtimeStats() {
+            totalPhonemes = 0;
+            confidenceSum = 0;
+            phonemeCount = 0;
+            document.getElementById('realtimeTotalPhonemes').textContent = '0';
+            document.getElementById('realtimeAvgConfidence').textContent = '0%';
+            document.getElementById('phonemesPerSecond').textContent = '0';
+        }
+        
+        function startSessionTimer() {
+            const timer = setInterval(() => {
+                if (!isRealtimeMode) {
+                    clearInterval(timer);
+                    return;
+                }
+                
+                if (sessionStartTime) {
+                    const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+                    document.getElementById('sessionTime').textContent = elapsed + 's';
+                }
+            }, 1000);
+        }
+        
+        function createProcessorBlob() {
+            const processorCode = `
+                class AudioProcessor extends AudioWorkletProcessor {
+                    constructor() {
+                        super();
+                        this.bufferSize = 4096;
+                        this.buffer = new Float32Array(this.bufferSize);
+                        this.bufferIndex = 0;
+                    }
+                    
+                    process(inputs) {
+                        const input = inputs[0];
+                        if (input.length > 0) {
+                            const channel = input[0];
+                            
+                            for (let i = 0; i < channel.length; i++) {
+                                this.buffer[this.bufferIndex] = channel[i];
+                                this.bufferIndex++;
+                                
+                                if (this.bufferIndex >= this.bufferSize) {
+                                    this.port.postMessage({
+                                        audio: Array.from(this.buffer)
+                                    });
+                                    
+                                    this.bufferIndex = 0;
+                                }
+                            }
+                        }
+                        
+                        return true;
+                    }
+                }
+                
+                registerProcessor('audio-processor', AudioProcessor);
+            `;
+            
+            const blob = new Blob([processorCode], { type: 'application/javascript' });
+            return URL.createObjectURL(blob);
+        }
+    </script>
+</body>
+</html>

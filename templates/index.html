@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phoneme Recognition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .record-btn {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+            color: white;
+        }
+        
+        .record-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+        }
+        
+        .record-btn.recording {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(45deg, #747d8c, #57606f);
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .file-upload {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ffa502, #ff6348);
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 165, 2, 0.4);
+        }
+        
+        .results {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 25px;
+            display: none;
+        }
+        
+        .phoneme-sequence {
+            font-size: 24px;
+            text-align: center;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            word-spacing: 8px;
+        }
+        
+        .phoneme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .phoneme-item {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .phoneme-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .phoneme-symbol {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .error {
+            background: rgba(255, 71, 87, 0.2);
+            border: 2px solid #ff4757;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .success {
+            background: rgba(46, 213, 115, 0.2);
+            border: 2px solid #2ed573;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 English Phoneme Recognition</h1>
+        
+        <div class="status" id="status">Ready to record</div>
+        
+        <div class="controls">
+            <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+                🎤 Start Recording
+            </button>
+            <button class="stop-btn" id="stopBtn" onclick="stopRecording()" disabled style="display: none;">
+                ⏹️ Stop
+            </button>
+        </div>
+        
+        <div class="file-upload">
+            <label for="audioFile">📁 Upload Audio File</label>
+            <input type="file" id="audioFile" accept="audio/*" onchange="uploadFile()">
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: bold;">
+                <input type="checkbox" id="englishOnlyToggle" checked style="transform: scale(1.5);">
+                <span>🇺🇸 English phonemes only</span>
+            </label>
+        </div>
+        
+        <div class="results" id="results">
+            <h2>📊 Phoneme Analysis Results</h2>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="totalPhonemes">0</span>
+                    <span class="stat-label">Total Phonemes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="avgConfidence">0%</span>
+                    <span class="stat-label">Avg Confidence</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="duration">0.0s</span>
+                    <span class="stat-label">Duration</span>
+                </div>
+            </div>
+            
+            <h3>🔤 IPA Transcription:</h3>
+            <div class="phoneme-sequence" id="ipaTranscription"></div>
+            
+            <h3>📝 Phoneme Sequence:</h3>
+            <div class="phoneme-sequence" id="phonemeSequence"></div>
+            
+            <h3>🎯 Detailed Phonemes:</h3>
+            <div class="phoneme-grid" id="phonemeGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        // Audio recording variables
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        
+        // Check model status on load
+        window.addEventListener('load', () => {
+            checkModelStatus();
+        });
+        
+        function checkModelStatus() {
+            fetch('/model_status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.model_loaded && data.vocab_loaded) {
+                        const vocabText = data.english_only ? 
+                            `${data.vocab_size} English phonemes` : 
+                            `${data.vocab_size} phonemes`;
+                        document.getElementById('status').innerHTML = `✅ Model loaded (${vocabText})`;
+                        document.getElementById('status').className = 'status success';
+                    } else {
+                        document.getElementById('status').innerHTML = '❌ Model not loaded';
+                        document.getElementById('status').className = 'status error';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking model status:', error);
+                });
+        }
+        
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+        
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    // Automatically analyze when recording stops
+                    analyzeRecording();
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('recordBtn').innerHTML = '🔴 Recording...';
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordBtn').onclick = stopRecording;
+                document.getElementById('status').textContent = 'Recording audio...';
+                
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                document.getElementById('status').innerHTML = '❌ Error accessing microphone';
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                
+                document.getElementById('recordBtn').innerHTML = '🎤 Start Recording';
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('recordBtn').onclick = toggleRecording;
+                document.getElementById('status').innerHTML = '<span class="loading"></span> Analyzing...';
+            }
+        }
+        
+        async function analyzeRecording() {
+            if (audioChunks.length === 0) {
+                document.getElementById('status').innerHTML = '❌ No audio recorded';
+                document.getElementById('status').className = 'status error';
+                return;
+            }
+            
+            try {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.wav');
+                formData.append('english_only', document.getElementById('englishOnlyToggle').checked);
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                displayResults(result);
+                
+            } catch (error) {
+                console.error('Error analyzing audio:', error);
+                document.getElementById('status').innerHTML = `❌ Error: ${error.message}`;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            document.getElementById('status').innerHTML = '<span class="loading"></span> Analyzing uploaded file...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('audio', file);
+                formData.append('english_only', document.getElementById('englishOnlyToggle').checked);
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                displayResults(result);
+                
+            } catch (error) {
+                console.error('Error analyzing file:', error);
+                document.getElementById('status').innerHTML = `❌ Error: ${error.message}`;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        
+        function displayResults(result) {
+            document.getElementById('status').innerHTML = '✅ Analysis complete!';
+            document.getElementById('status').className = 'status success';
+            
+            // Update stats
+            document.getElementById('totalPhonemes').textContent = result.total_phonemes || 0;
+            document.getElementById('avgConfidence').textContent = 
+                Math.round((result.avg_confidence || 0) * 100) + '%';
+            document.getElementById('duration').textContent = 
+                (result.audio_duration || 0).toFixed(2) + 's';
+            
+            // Update transcriptions
+            document.getElementById('ipaTranscription').textContent = 
+                result.ipa_transcription || '';
+            document.getElementById('phonemeSequence').textContent = 
+                result.sequence_normalized || result.sequence_raw || result.sequence || '';
+            
+            // Update phoneme grid
+            const grid = document.getElementById('phonemeGrid');
+            grid.innerHTML = '';
+            
+            if (result.phonemes && result.phonemes.length > 0) {
+                result.phonemes.forEach(phoneme => {
+                    const item = document.createElement('div');
+                    item.className = 'phoneme-item';
+                    const timeStr = phoneme.start ? phoneme.start.toFixed(2) : '0.00';
+                    item.innerHTML = `
+                        <div class="phoneme-symbol">/${phoneme.phoneme}/</div>
+                        <div style="font-size: 14px; opacity: 0.8;">
+                            ${Math.round(phoneme.confidence * 100)}% confidence
+                        </div>
+                        <div style="font-size: 12px; opacity: 0.6;">${timeStr}s</div>
+                    `;
+                    grid.appendChild(item);
+                });
+            } else {
+                grid.innerHTML = '<div style="text-align: center; opacity: 0.6;">No phonemes detected</div>';
+            }
+            
+            document.getElementById('results').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
