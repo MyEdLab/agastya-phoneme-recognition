@@ -1,0 +1,59 @@
+# This file specifies files that are intentionally not uploaded to Google Cloud
+# See: https://cloud.google.com/sdk/gcloud/reference/topic/gcloudignore
+
+.gcloudignore
+# If you would like to upload your .git directory, .gitignore file or files
+# from your .gitignore file, remove the corresponding line
+# below:
+.git
+.gitignore
+
+# Python pycache:
+__pycache__/
+# Ignored by the build system
+/setup.cfg
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Development files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local audio files
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# Backup files
+backup_*
+*_old.*
+templates/index_old.html
+
+# Test files
+test_*.py
