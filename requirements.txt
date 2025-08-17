@@ -9,3 +9,4 @@ flask
 flask-cors
 flask-socketio
 python-socketio
+gunicorn
