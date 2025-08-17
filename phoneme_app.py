@@ -210,6 +210,15 @@ def index():
     """Serve the main HTML page"""
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'model_loaded': model is not None,
+        'vocab_loaded': id2label is not None
+    })
+
 @app.route('/model_status')
 def model_status():
     """Check model loading status"""
@@ -231,6 +240,10 @@ def model_status():
 def analyze_audio():
     """Analyze uploaded audio file"""
     try:
+        # Check if model is loaded
+        if model is None or feature_extractor is None or id2label is None:
+            return jsonify({'error': 'Model not loaded. Please check server logs.'}), 503
+        
         if 'audio' not in request.files:
             return jsonify({'error': 'No audio file provided'}), 400
         
@@ -270,9 +283,15 @@ def analyze_audio():
 # Main Entry Point
 # ------------------------------
 
-if __name__ == '__main__':
+# Load model when module is imported (for production deployment)
+try:
     load_phoneme_model()
-    
+    print("✅ Model loaded successfully")
+except Exception as e:
+    print(f"⚠️ Model loading failed: {e}")
+    print("App will start but phoneme analysis won't work")
+
+if __name__ == '__main__':
     print("\n🎤 Simple Phoneme Recognition App")
     print("=" * 60)
     print("✓ Model loaded successfully")
